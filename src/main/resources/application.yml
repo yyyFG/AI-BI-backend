@@ -76,10 +76,11 @@ wx:
 # 对象存储
 cos:
   client:
-    accessKey: xxx
-    secretKey: xxx
-    region: xxx
-    bucket: xxx
+    accessKey:
+    secretKey:
+    bucketAddr:
+    bucket:
+    folderName:
 # 接口文档配置
 knife4j:
   enable: true

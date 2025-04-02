@@ -62,6 +62,11 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
         if (StringUtils.isEmpty(imgUrl)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "图片不能为空");
         }
+
+        // 增加图片校验
+
+
+
         if (StringUtils.isEmpty(description) || description.length() > 100) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "队伍描述不能为空或长度大于100");
         }
@@ -171,7 +176,8 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
             boolean b3 = teamChartService.remove(teamChartQueryWrapper);
             return b1 && b2 && b3;
         }
-        queryWrapper.orderBy(true, true, "createTime").apply("limit 2");
+
+        queryWrapper.orderBy(true, false, "createTime").last("limit 2");
         TeamUser teamUser = teamUserService.list(queryWrapper).get(1);
         Long newCaptainId = teamUser.getUserId();
         team.setUserId(newCaptainId);
@@ -215,6 +221,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
         queryWrapper.eq("userId", userId);
         List<TeamUser> teamUsers = teamUserService.list(queryWrapper);
         List<Long> teamIds = teamUsers.stream().map(TeamUser::getTeamId).collect(Collectors.toList());
+
         return this.listByIds(teamIds);
     }
 

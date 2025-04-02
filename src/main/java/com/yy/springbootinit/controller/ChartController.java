@@ -14,6 +14,7 @@ import com.yy.springbootinit.exception.ThrowUtils;
 import com.yy.springbootinit.manager.RedisLimiterManager;
 import com.yy.springbootinit.manager.TestDeepSeekAiManager;
 import com.yy.springbootinit.model.dto.chart.*;
+import com.yy.springbootinit.model.dto.team_chart.ChartAddToTeamRequest;
 import com.yy.springbootinit.model.entity.Chart;
 import com.yy.springbootinit.model.entity.User;
 import com.yy.springbootinit.model.vo.BIResponse;
@@ -272,11 +273,24 @@ public class ChartController {
         ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR, "id输入错误");
         ThrowUtils.throwIf(userService.getLoginUser(request) == null, ErrorCode.NOT_LOGIN_ERROR);
 
-
         BIResponse biResponse = chartService.RegenChartByAI(id, request);
 
         return ResultUtils.success(biResponse);
     }
 
 
+    /**
+     * 添加图表到队伍
+     * @param chartAddToTeamRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/add/team")
+    public BaseResponse<Boolean> addChartToTeam(@RequestBody ChartAddToTeamRequest chartAddToTeamRequest, HttpServletRequest request) {
+        if (chartAddToTeamRequest == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        boolean b = chartService.addChartToTeam(chartAddToTeamRequest, request);
+        return ResultUtils.success(b);
+    }
 }

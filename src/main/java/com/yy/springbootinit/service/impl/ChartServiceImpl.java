@@ -13,10 +13,13 @@ import com.yy.springbootinit.exception.BusinessException;
 import com.yy.springbootinit.exception.ThrowUtils;
 import com.yy.springbootinit.manager.RedisLimiterManager;
 import com.yy.springbootinit.manager.TestDeepSeekAiManager;
+import com.yy.springbootinit.mapper.TeamChartMapper;
 import com.yy.springbootinit.model.dto.chart.ChartQueryRequest;
 import com.yy.springbootinit.model.dto.chart.ChartRegenRequest;
 import com.yy.springbootinit.model.dto.chart.GenChartByAIRequest;
+import com.yy.springbootinit.model.dto.team_chart.ChartAddToTeamRequest;
 import com.yy.springbootinit.model.entity.Chart;
+import com.yy.springbootinit.model.entity.Team;
 import com.yy.springbootinit.model.entity.TeamChart;
 import com.yy.springbootinit.model.entity.User;
 import com.yy.springbootinit.model.vo.BIResponse;
@@ -67,6 +70,9 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
 
     @Resource
     private ChartMapper chartMapper;
+
+    @Resource
+    private TeamChartMapper teamChartMapper;
 
     @Resource
     private TeamService teamService;
@@ -502,6 +508,7 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
         newChart.setName(name);
         newChart.setGoal(goal);
         newChart.setChartType(chartType);
+        newChart.setChartData(csvData);
         newChart.setGenChart(genChart);
         newChart.setGenResult(genResult);
         newChart.setStatus("succeed");
@@ -560,6 +567,7 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
         if (chartCount <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "图表不存在");
         }
+
         // 限流
         redisLimiterManager.doRateLimit("genChartByAI_" + userId);
 
@@ -578,24 +586,13 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
         String csvData = chartData;
         userInput.append(csvData).append("\n");
 
-        // 插入到数据库
-        Chart chart = new Chart();
-        chart.setName(name);
-        chart.setGoal(goal);
-        if((csvData.length()*2) < 63*1024) chart.setChartData(csvData);
-        chart.setChartType(chartType);
-        chart.setStatus("wait");
-        chart.setUserId(loginUser.getId());
-        boolean saveResult = this.save(chart);
-        ThrowUtils.throwIf(!saveResult,ErrorCode.SYSTEM_ERROR,"图表保存失败");
-
         CompletableFuture.runAsync(() -> {
             Chart updateChart = new Chart();
-            updateChart.setId(chart.getId());
+            updateChart.setId(chartId);
             updateChart.setStatus("running");
             boolean b = this.updateById(updateChart);
             if(!b){
-                handleChartUpdateError(chart.getId(), "图表状态执行中更改失败");
+                handleChartUpdateError(chartId, "图表状态执行中更改失败");
                 return;
             }
 
@@ -606,31 +603,60 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
             System.out.println(splits[0]);
 
             if(splits.length < 3){
-                handleChartUpdateError(chart.getId(), "生成错误");
+                handleChartUpdateError(chartId, "生成错误");
                 return;
             }
             String genChart = splits[1].trim();
             String genResult = splits[2].trim();
             Chart updateChartResult = new Chart();
-            updateChartResult.setId(chart.getId());
+            updateChartResult.setId(chartId);
+            updateChartResult.setChartType(chartType);
+            updateChartResult.setChartData(csvData);
             updateChartResult.setGenChart(genChart);
             updateChartResult.setGenResult(genResult);
 
             updateChartResult.setStatus("succeed");
-            boolean updateResult = this.updateById(updateChartResult);
+            boolean updateResult = this.saveOrUpdate(updateChartResult);
             if(!updateResult){
-                handleChartUpdateError(chart.getId(), "更新图表成功状态失败");
+                handleChartUpdateError(chartId, "更新图表成功状态失败");
                 return;
             }
         }, threadPoolExecutor);
 
         BIResponse biResponse = new BIResponse();
-        biResponse.setCharId(chart.getId());
+        biResponse.setCharId(chartId);
 
         return biResponse;
     }
 
 
+    /**
+     * 添加图表到队伍
+     * @param chartAddToTeamRequest
+     * @param request
+     * @return
+     */
+    @Override
+    public boolean addChartToTeam(ChartAddToTeamRequest chartAddToTeamRequest, HttpServletRequest request) {
+        Long chartId = chartAddToTeamRequest.getChartId();
+        Long teamId = chartAddToTeamRequest.getTeamId();
+        Chart chart = this.getById(chartId);
+        if (chart == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "图表不存在");
+        }
+        Team team = teamService.getById(teamId);
+        if (team == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "队伍不存在");
+        }
+
+        QueryWrapper<TeamChart> queryWrapper = new QueryWrapper();
+        queryWrapper.eq("teamId",teamId).eq("chartId",chartId);
+        Long count = teamChartMapper.selectCount(queryWrapper);
+        ThrowUtils.throwIf(count > 0, ErrorCode.PARAMS_ERROR, "图表已存在");
+
+        TeamChart teamChart = TeamChart.builder().teamId(teamId).chartId(chartId).build();
+        return teamChartService.save(teamChart);
+    }
 
 }
 

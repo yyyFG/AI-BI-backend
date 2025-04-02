@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.yy.springbootinit.model.dto.chart.ChartQueryRequest;
 import com.yy.springbootinit.model.dto.chart.ChartRegenRequest;
 import com.yy.springbootinit.model.dto.chart.GenChartByAIRequest;
+import com.yy.springbootinit.model.dto.team_chart.ChartAddToTeamRequest;
 import com.yy.springbootinit.model.entity.Chart;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.yy.springbootinit.model.vo.BIResponse;
@@ -92,4 +93,13 @@ public interface ChartService extends IService<Chart> {
      * @return
      */
     BIResponse regenChartByAsyncMqFromTeam(ChartRegenRequest chartRegenRequest, HttpServletRequest request);
+
+
+    /**
+     * 添加图表到队伍
+     * @param chartAddToTeamRequest
+     * @param request
+     * @return
+     */
+    boolean addChartToTeam(ChartAddToTeamRequest chartAddToTeamRequest, HttpServletRequest request);
 }

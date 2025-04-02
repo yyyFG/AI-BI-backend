@@ -1,5 +1,6 @@
 package com.yy.springbootinit.controller;
 
+import cn.hutool.core.io.FileUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 
@@ -23,9 +24,11 @@ import com.yy.springbootinit.service.ChartService;
 import com.yy.springbootinit.service.TeamService;
 import com.yy.springbootinit.service.UserService;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.util.Arrays;
 import java.util.List;
 
 @RequestMapping("/team")
@@ -126,7 +129,6 @@ public class TeamController {
         return ResultUtils.success(b);
     }
 
-    @AuthCheck(mustRole = "admin")
     @PostMapping("/delete")
     public BaseResponse<Boolean> deleteTeam(@RequestBody DeleteRequest deleteRequest) {
         if (deleteRequest == null || deleteRequest.getId() == null) {
@@ -159,6 +161,27 @@ public class TeamController {
         ThrowUtils.throwIf(chartRegenRequest == null, ErrorCode.PARAMS_ERROR);
 
         BIResponse biResponse = chartService.regenChartByAsyncMqFromTeam(chartRegenRequest, request);
+        return ResultUtils.success(biResponse);
+    }
+
+
+    @PostMapping("/chart/add")
+    public BaseResponse<BIResponse> addTeamChart(@RequestBody TeamAddRequest teamAddRequest, HttpServletRequest request){
+        BIResponse biResponse = new BIResponse();
+        return ResultUtils.success(biResponse);
+    }
+
+
+    @PostMapping("/chart/delete")
+    public BaseResponse<BIResponse> deleteTeamChart(@RequestBody TeamAddRequest teamAddRequest, HttpServletRequest request){
+        BIResponse biResponse = new BIResponse();
+        return ResultUtils.success(biResponse);
+    }
+
+
+    @PostMapping("/chart/update")
+    public BaseResponse<BIResponse> updateTeamChart(@RequestBody Team team, HttpServletRequest request){
+        BIResponse biResponse = new BIResponse();
         return ResultUtils.success(biResponse);
     }
 
