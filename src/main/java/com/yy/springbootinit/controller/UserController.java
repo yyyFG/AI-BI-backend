@@ -31,6 +31,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import static com.yy.springbootinit.constant.CommonConstant.BASE_URL;
 import static com.yy.springbootinit.service.impl.UserServiceImpl.SALT;
 
 /**
@@ -156,6 +158,9 @@ public class UserController {
         if (user == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
+
+        String imgUrl = BASE_URL + user.getUserAvatar();
+        user.setUserAvatar(imgUrl);
         if (user.getId() == null) {
             return ResultUtils.success(userService.addUser(user));
         }
@@ -297,5 +302,16 @@ public class UserController {
         boolean result = userService.updateById(user);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(true);
+    }
+
+    /**
+     * 用户签到
+     * @param request
+     * @return
+     */
+    @PostMapping("/sign/in")
+    public BaseResponse<Boolean> signIn(HttpServletRequest request) {
+        boolean b = userService.signIn(request);
+        return ResultUtils.success(b);
     }
 }

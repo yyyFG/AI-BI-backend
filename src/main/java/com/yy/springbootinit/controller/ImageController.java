@@ -8,29 +8,33 @@ import com.yy.springbootinit.common.ResultUtils;
 import com.yy.springbootinit.exception.BusinessException;
 import com.yy.springbootinit.exception.ThrowUtils;
 import com.yy.springbootinit.manager.CosManager;
-import com.yy.springbootinit.model.entity.User;
-import com.yy.springbootinit.service.TeamService;
-import com.yy.springbootinit.service.UserService;
+import com.yy.springbootinit.utils.DateUtil;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.ss.formula.functions.T;
+import org.apache.commons.io.FileUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.annotation.Resource;
-import javax.servlet.http.HttpServletRequest;
+import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/image")
-@Slf4j
+@CrossOrigin
 public class ImageController {
 
 
     @Autowired
     private CosManager cosManager;
+
+
+//    private String imagesFilePath = "\\home\\ubuntu\\picture\\BIpicture\\";
+    private String imagesFilePath = "D:\\picture\\BI\\";
+
 
     /**
      * 图片上传
@@ -38,7 +42,7 @@ public class ImageController {
      * @return
      */
     @PostMapping("/upload")
-    public String imgUpload(MultipartFile file) {
+    public BaseResponse<String> imgUpload(@RequestPart MultipartFile file) {
         // 文件校验
         long size = file.getSize();
         if (size > 5 * 1024 * 1024L) {
@@ -52,10 +56,25 @@ public class ImageController {
 
         String url = null;
 
-        url = cosManager.upLoadFile(file);
-        ThrowUtils.throwIf(url == null, ErrorCode.PARAMS_ERROR, "文件上传失败");
+        try {
+            if(!file.isEmpty()){
+                // 获取文件名
+                String originalFilename = file.getOriginalFilename();
+                String suffixName = originalFilename.substring(originalFilename.lastIndexOf("."));
+                String newFileName = DateUtil.getCurrentDateStr()+suffixName;
+                FileUtils.copyInputStreamToFile(file.getInputStream(), new File(imagesFilePath+newFileName));
 
-        return url;
+                url = newFileName;
+            }
+        }catch (IOException e){
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "上传图片失败");
+        }
+
+//        url = cosManager.upLoadFile(file);
+//        ThrowUtils.throwIf(url == null, ErrorCode.PARAMS_ERROR, "文件上传失败");
+
+
+        return ResultUtils.success(url);
     }
 
 }

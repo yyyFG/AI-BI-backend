@@ -11,15 +11,15 @@ import javax.annotation.Resource;
 public class BIProducer {
 
 
-    @Resource
-    private RabbitTemplate rabbitTemplate;
-
-
-    /**
-     * 发送消息
-     * @param message
-     */
-    public void sendMessage(String message){
-        rabbitTemplate.convertAndSend(BIMqConstant.BI_EXCHANGE_NAME, BIMqConstant.BI_ROUTING_KEY, message);
-    }
+//    @Resource
+//    private RabbitTemplate rabbitTemplate;
+//
+//
+//    /**
+//     * 发送消息
+//     * @param message
+//     */
+//    public void sendMessage(String message){
+//        rabbitTemplate.convertAndSend(BIMqConstant.BI_EXCHANGE_NAME, BIMqConstant.BI_ROUTING_KEY, message);
+//    }
 }

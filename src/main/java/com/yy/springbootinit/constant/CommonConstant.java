@@ -14,5 +14,8 @@ public interface CommonConstant {
      * 降序
      */
     String SORT_ORDER_DESC = " descend";
-    
+
+
+    String BASE_URL = "http://localhost:8101/api/image/user/";
+
 }

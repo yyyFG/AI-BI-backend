@@ -2,6 +2,7 @@ package com.yy.springbootinit.service.impl;
 
 import cn.hutool.core.io.FileUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.yy.springbootinit.bizmq.BIProducer;
@@ -30,6 +31,7 @@ import com.yy.springbootinit.service.TeamService;
 import com.yy.springbootinit.service.UserService;
 import com.yy.springbootinit.utils.ExcelUtils;
 import com.yy.springbootinit.utils.SqlUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -55,6 +57,7 @@ import java.util.stream.Collectors;
 * @createDate 2025-03-19 16:01:02
 */
 @Service
+@Slf4j
 public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
     implements ChartService {
 
@@ -173,6 +176,9 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
     @Override
     public BIResponse genChartByAI(MultipartFile multipartFile,
                                                  GenChartByAIRequest genChartByAIRequest, HttpServletRequest request) {
+        // 用户登录
+        User loginUser = userService.getLoginUser(request);
+
         String name = genChartByAIRequest.getName();
         String goal = genChartByAIRequest.getGoal();
         String chartType = genChartByAIRequest.getChartType();
@@ -191,8 +197,6 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
         final List<String> validFileSuffixList = Arrays.asList("xlsx", "xls");
         ThrowUtils.throwIf(!validFileSuffixList.contains(suffix), ErrorCode.PARAMS_ERROR, "文件后缀非法");
 
-        // 用户登录
-        User loginUser = userService.getLoginUser(request);
 
         // 限流判断,每个用户一个限流器
         redisLimiterManager.doRateLimit("genChartByAI_" + loginUser.getId());
@@ -240,6 +244,16 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
         chart.setStatus("succeed");
         boolean saveResult = this.save(chart);
         ThrowUtils.throwIf(!saveResult, ErrorCode.SYSTEM_ERROR, "图表保存失败");
+        // 更新用户积分和正在生成的图表数量
+        UpdateWrapper<User> userUpdateWrapper = new UpdateWrapper<>();
+        userUpdateWrapper.setSql("score = score - 5");
+        Long userId = loginUser.getId();
+        userUpdateWrapper.eq("id", userId);
+        boolean update = userService.update(userUpdateWrapper);
+        if (!update) {
+            log.error("用户 {} 积分扣除失败", userId);
+        }
+
         BIResponse biResponse = new BIResponse();
         biResponse.setGenChart(genChart);
         biResponse.setGenResult(genResult);
@@ -260,6 +274,10 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
     @Override
     public BIResponse genChartByAIAsync(MultipartFile multipartFile,
                                                       GenChartByAIRequest genChartByAIRequest, HttpServletRequest request) {
+
+        // 用户登录
+        User loginUser = userService.getLoginUser(request);
+
         String name = genChartByAIRequest.getName();
         String goal = genChartByAIRequest.getGoal();
         String chartType = genChartByAIRequest.getChartType();
@@ -278,8 +296,6 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
         final List<String> validFileSuffixList = Arrays.asList("xlsx","xls");
         ThrowUtils.throwIf(!validFileSuffixList.contains(suffix), ErrorCode.PARAMS_ERROR, "文件后缀非法");
 
-        // 用户登录
-        User loginUser = userService.getLoginUser(request);
 
         // 限流判断,每个用户一个限流器
         redisLimiterManager.doRateLimit("genChartByAI_" + loginUser.getId());
@@ -350,6 +366,16 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
                 handleChartUpdateError(chart.getId(), "更新图表成功状态失败");
                 return;
             }
+            // 更新用户积分和正在生成的图表数量
+            UpdateWrapper<User> userUpdateWrapper = new UpdateWrapper<>();
+            userUpdateWrapper.setSql("score = score - 5");
+            Long userId = loginUser.getId();
+            userUpdateWrapper.eq("id", userId);
+            boolean update = userService.update(userUpdateWrapper);
+            if (!update) {
+                log.error("用户 {} 积分扣除失败", userId);
+            }
+
         }, threadPoolExecutor);
 
         BIResponse biResponse = new BIResponse();
@@ -367,70 +393,88 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
      * @param request
      * @return
      */
-    @Override
-    public BIResponse genChartByAIAsyncMQ(MultipartFile multipartFile,
-                                                        GenChartByAIRequest genChartByAIRequest, HttpServletRequest request) {
-        String name = genChartByAIRequest.getName();
-        String goal = genChartByAIRequest.getGoal();
-        String chartType = genChartByAIRequest.getChartType();
-        // 校验
-        ThrowUtils.throwIf(StringUtils.isBlank(name), ErrorCode.PARAMS_ERROR, "目标为空");
-        ThrowUtils.throwIf(StringUtils.isNotBlank(name) && name.length() > 100, ErrorCode.PARAMS_ERROR, "名称过长");
-        // 校验文件
-        long size = multipartFile.getSize();
-        String originalFilename = multipartFile.getOriginalFilename();
-        // 校验文件大小
-        final long ONE_MB = 1024 * 1024L;
-        ThrowUtils.throwIf(size > ONE_MB, ErrorCode.PARAMS_ERROR, "文件超过 1M");
-        // 校验文件后缀， aaa.png
-        String suffix = FileUtil.getSuffix(originalFilename);
-//        final List<String> validFileSuffixList = Arrays.asList("png", "jpg", "svg", "webp", "jpeg");
-        final List<String> validFileSuffixList = Arrays.asList("xlsx","xls");
-        ThrowUtils.throwIf(!validFileSuffixList.contains(suffix), ErrorCode.PARAMS_ERROR, "文件后缀非法");
+//    @Override
+//    public BIResponse genChartByAIAsyncMQ(MultipartFile multipartFile,
+//                                                        GenChartByAIRequest genChartByAIRequest, HttpServletRequest request) {
+//
+//        // 用户登录
+//        User loginUser = userService.getLoginUser(request);
+//        // 先校验用户积分是否足够
+//        boolean hasScore = userService.userHasScore(loginUser);
+//        ThrowUtils.throwIf(!hasScore, ErrorCode.PARAMS_ERROR, "用户积分不足");
+//
+//
+//        String name = genChartByAIRequest.getName();
+//        String goal = genChartByAIRequest.getGoal();
+//        String chartType = genChartByAIRequest.getChartType();
+//        // 校验
+//        ThrowUtils.throwIf(StringUtils.isBlank(name), ErrorCode.PARAMS_ERROR, "目标为空");
+//        ThrowUtils.throwIf(StringUtils.isNotBlank(name) && name.length() > 100, ErrorCode.PARAMS_ERROR, "名称过长");
+//        // 校验文件
+//        long size = multipartFile.getSize();
+//        String originalFilename = multipartFile.getOriginalFilename();
+//        // 校验文件大小
+//        final long ONE_MB = 1024 * 1024L;
+//        ThrowUtils.throwIf(size > ONE_MB, ErrorCode.PARAMS_ERROR, "文件超过 1M");
+//        // 校验文件后缀， aaa.png
+//        String suffix = FileUtil.getSuffix(originalFilename);
+////        final List<String> validFileSuffixList = Arrays.asList("png", "jpg", "svg", "webp", "jpeg");
+//        final List<String> validFileSuffixList = Arrays.asList("xlsx","xls");
+//        ThrowUtils.throwIf(!validFileSuffixList.contains(suffix), ErrorCode.PARAMS_ERROR, "文件后缀非法");
+//
+//
+//        // 限流判断,每个用户一个限流器
+//        redisLimiterManager.doRateLimit("genChartByAI_" + loginUser.getId());
+//
+//
+//        // 用户输入
+//        StringBuilder userInput = new StringBuilder();
+//        userInput.append("分析需求：").append("\n");
+//
+//        // 拼接分析目标
+//        String userGoal = goal;
+//        if(StringUtils.isNotBlank(chartType)){
+//            userGoal += ". 请使用" + chartType;
+//        }
+//
+//        userInput.append(userGoal).append("\n");
+//        userInput.append("原始数据：").append("\n");
+//        //  压缩后的数据
+//        String csvData = ExcelUtils.excelToCsv(multipartFile);
+//        userInput.append(csvData).append("\n");
+//
+//
+//        // 插入到数据库
+//        Chart chart = new Chart();
+//        chart.setName(name);
+//        chart.setGoal(goal);
+//        if((csvData.length()*2) < 63*1024) chart.setChartData(csvData);
+//        chart.setChartType(chartType);
+//        chart.setStatus("wait");
+//        chart.setUserId(loginUser.getId());
+//        boolean saveResult = this.save(chart);
+//        ThrowUtils.throwIf(!saveResult,ErrorCode.SYSTEM_ERROR,"图表保存失败");
+//        long newChartId = chart.getId();
+//
+//        biProducer.sendMessage(String.valueOf(newChartId));
+//
+//        // 更新用户积分和正在生成的图表数量
+//        UpdateWrapper<User> userUpdateWrapper = new UpdateWrapper<>();
+//        userUpdateWrapper.setSql("score = score - 5");
+//        Long userId = loginUser.getId();
+//        userUpdateWrapper.eq("id", userId);
+//        boolean update = userService.update(userUpdateWrapper);
+//        if (!update) {
+//            log.error("用户 {} 积分扣除失败", userId);
+//        }
+//
+//        BIResponse biResponse = new BIResponse();
+//        biResponse.setCharId(newChartId);
+//
+//        return biResponse;
+//    }
+//
 
-        // 用户登录
-        User loginUser = userService.getLoginUser(request);
-
-        // 限流判断,每个用户一个限流器
-        redisLimiterManager.doRateLimit("genChartByAI_" + loginUser.getId());
-
-
-        // 用户输入
-        StringBuilder userInput = new StringBuilder();
-        userInput.append("分析需求：").append("\n");
-
-        // 拼接分析目标
-        String userGoal = goal;
-        if(StringUtils.isNotBlank(chartType)){
-            userGoal += ". 请使用" + chartType;
-        }
-
-        userInput.append(userGoal).append("\n");
-        userInput.append("原始数据：").append("\n");
-        //  压缩后的数据
-        String csvData = ExcelUtils.excelToCsv(multipartFile);
-        userInput.append(csvData).append("\n");
-
-
-        // 插入到数据库
-        Chart chart = new Chart();
-        chart.setName(name);
-        chart.setGoal(goal);
-        if((csvData.length()*2) < 63*1024) chart.setChartData(csvData);
-        chart.setChartType(chartType);
-        chart.setStatus("wait");
-        chart.setUserId(loginUser.getId());
-        boolean saveResult = this.save(chart);
-        ThrowUtils.throwIf(!saveResult,ErrorCode.SYSTEM_ERROR,"图表保存失败");
-        long newChartId = chart.getId();
-
-        biProducer.sendMessage(String.valueOf(newChartId));
-
-        BIResponse biResponse = new BIResponse();
-        biResponse.setCharId(newChartId);
-
-        return biResponse;
-    }
 
     // 处理图表更新失败
     private void handleChartUpdateError(long chartId, String execMessage){
@@ -455,6 +499,10 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
      */
     @Override
     public BIResponse RegenChartByAI(long id, HttpServletRequest request) {
+
+        // 用户登录
+        User loginUser = userService.getLoginUser(request);
+
         if (id <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "输入错误");
         }
@@ -514,6 +562,17 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
         newChart.setStatus("succeed");
         boolean saveResult = this.saveOrUpdate(newChart);
         ThrowUtils.throwIf(!saveResult, ErrorCode.SYSTEM_ERROR, "图表保存失败");
+
+        // 更新用户积分和正在生成的图表数量
+        UpdateWrapper<User> userUpdateWrapper = new UpdateWrapper<>();
+        userUpdateWrapper.setSql("score = score - 5");
+        Long userId = loginUser.getId();
+        userUpdateWrapper.eq("id", userId);
+        boolean update = userService.update(userUpdateWrapper);
+        if (!update) {
+            log.error("用户 {} 积分扣除失败", userId);
+        }
+
         BIResponse biResponse = new BIResponse();
         biResponse.setCharId(chart.getId());
 
@@ -621,6 +680,16 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
                 handleChartUpdateError(chartId, "更新图表成功状态失败");
                 return;
             }
+
+            // 更新用户积分和正在生成的图表数量
+            UpdateWrapper<User> userUpdateWrapper = new UpdateWrapper<>();
+            userUpdateWrapper.setSql("score = score - 5");
+            userUpdateWrapper.eq("id", userId);
+            boolean update = userService.update(userUpdateWrapper);
+            if (!update) {
+                log.error("用户 {} 积分扣除失败", userId);
+            }
+
         }, threadPoolExecutor);
 
         BIResponse biResponse = new BIResponse();

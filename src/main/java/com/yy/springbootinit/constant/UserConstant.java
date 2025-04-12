@@ -28,5 +28,8 @@ public interface UserConstant {
      */
     String BAN_ROLE = "ban";
 
-    // endregion
+    /**
+     * 签到成功
+     */
+    String USER_SIGN_IN = "succeed";
 }

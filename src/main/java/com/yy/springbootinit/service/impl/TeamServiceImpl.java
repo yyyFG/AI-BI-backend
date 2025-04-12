@@ -1,13 +1,18 @@
 package com.yy.springbootinit.service.impl;
 
+import cn.hutool.core.io.FileUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.yy.springbootinit.common.BaseResponse;
 import com.yy.springbootinit.common.DeleteRequest;
 import com.yy.springbootinit.common.ErrorCode;
+import com.yy.springbootinit.common.ResultUtils;
 import com.yy.springbootinit.constant.CommonConstant;
 import com.yy.springbootinit.exception.BusinessException;
+import com.yy.springbootinit.exception.ThrowUtils;
 import com.yy.springbootinit.mapper.TeamMapper;
+import com.yy.springbootinit.mapper.UserMapper;
 import com.yy.springbootinit.model.dto.team.TeamAddRequest;
 import com.yy.springbootinit.model.dto.team.TeamQueryRequest;
 import com.yy.springbootinit.model.entity.Team;
@@ -19,16 +24,26 @@ import com.yy.springbootinit.service.TeamChartService;
 import com.yy.springbootinit.service.TeamService;
 import com.yy.springbootinit.service.TeamUserService;
 import com.yy.springbootinit.service.UserService;
+import com.yy.springbootinit.utils.DateUtil;
 import com.yy.springbootinit.utils.SqlUtils;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.io.File;
+import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import static com.yy.springbootinit.constant.CommonConstant.BASE_URL;
 
 /**
  * @author DCX
@@ -48,11 +63,17 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
     @Resource
     private TeamChartService teamChartService;
 
+    @Resource
+    private UserMapper userMapper;
+
+    @Resource
+    private TeamMapper teamMapper;
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean addTeam(TeamAddRequest teamAddRequest, HttpServletRequest request) {
         String name = teamAddRequest.getName();
-        String imgUrl = teamAddRequest.getImgUrl();
+        String imgUrl = BASE_URL + teamAddRequest.getImgUrl();
         String description = teamAddRequest.getDescription();
         Integer maxNum = teamAddRequest.getMaxNum();
         if (StringUtils.isEmpty(name)) {
@@ -63,10 +84,6 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "图片不能为空");
         }
 
-        // 增加图片校验
-
-
-
         if (StringUtils.isEmpty(description) || description.length() > 100) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "队伍描述不能为空或长度大于100");
         }
@@ -75,6 +92,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
         }
         Team team = new Team();
         BeanUtils.copyProperties(teamAddRequest, team);
+        team.setImgUrl(imgUrl);
         User loginUser = userService.getLoginUser(request);
         Long userId = loginUser.getId();
         team.setUserId(userId);
@@ -88,9 +106,13 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean deleteTeam(DeleteRequest deleteRequest) {
+    public boolean deleteTeam(DeleteRequest deleteRequest, HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        Long headerId = loginUser.getId();
         Long teamId = deleteRequest.getId();
         Team team = this.getById(teamId);
+        ThrowUtils.throwIf(!headerId.equals(team.getUserId()), ErrorCode.NO_AUTH_ERROR, "不是队长无法删除队伍");
+
         if (team == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "队伍不存在");
         }
@@ -102,6 +124,25 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
         boolean b2 = teamUserService.remove(teamUserQueryWrapper);
         boolean b3 = this.removeById(teamId);
         return b1 && b2 && b3;
+    }
+
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean deleteTeamUser(DeleteRequest deleteRequest, HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        Long headerId = loginUser.getId();
+        Long userId = deleteRequest.getId();
+        ThrowUtils.throwIf(userId.equals(headerId), ErrorCode.PARAMS_ERROR, "队长不能删除");
+
+        TeamUser teamUser = teamUserService.getOne(new QueryWrapper<TeamUser>().eq("userId",userId));
+        ThrowUtils.throwIf(teamUser == null, ErrorCode.PARAMS_ERROR, "队员为空");
+
+        QueryWrapper<TeamUser> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("userId", userId);
+        boolean result = teamUserService.remove(queryWrapper);
+
+        return result;
     }
 
     @Override
@@ -214,13 +255,39 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
     }
 
     @Override
+    public List<User> pageMyTeamUser(TeamUser teamUser, HttpServletRequest request){
+        User loginUser = userService.getLoginUser(request);
+        Long headerId = loginUser.getId();
+        QueryWrapper<Team> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("userId",headerId);
+        Team team = teamMapper.selectOne(queryWrapper);
+        Long id = team.getId();
+        QueryWrapper<TeamUser> queryWrapper2 = new QueryWrapper<>();
+        queryWrapper2.eq("teamId",id);
+
+        List<TeamUser> teamUserList = teamUserService.list(queryWrapper2);
+        List<Long> userIds = teamUserList.stream()
+                .map(TeamUser::getUserId)  // 提取 userId
+                .collect(Collectors.toList());  // 收集成 List
+//        System.out.println(userIds);
+        List<User> users = userMapper.selectList(new QueryWrapper<User>().in("id", userIds).ne("id",headerId).select("id", "userName"));
+        // 提取 userName
+        List<String> userNames = users.stream()
+                .map(User::getUserName)
+                .collect(Collectors.toList());
+        System.out.println(userNames);
+
+        return users;
+    }
+
+    @Override
     public List<Team> listAllMyJoinedTeam(HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
         Long userId = loginUser.getId();
-        QueryWrapper<TeamUser> queryWrapper = new QueryWrapper<>();
+        QueryWrapper<Team> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("userId", userId);
-        List<TeamUser> teamUsers = teamUserService.list(queryWrapper);
-        List<Long> teamIds = teamUsers.stream().map(TeamUser::getTeamId).collect(Collectors.toList());
+        List<Team> teams = this.list(queryWrapper);
+        List<Long> teamIds = teams.stream().map(Team::getId).collect(Collectors.toList());
 
         return this.listByIds(teamIds);
     }
@@ -241,9 +308,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
     public Boolean updateTeam(Team team, HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
         Long userId = loginUser.getId();
-        if (!userService.isAdmin(request) && !userId.equals(team.getUserId())) {
-            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "您无权限修改队伍信息");
-        }
+        if(this.getById(team) == null) return this.save(team);
         return this.updateById(team);
     }
 

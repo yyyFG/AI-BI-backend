@@ -3,7 +3,6 @@ package com.yy.springbootinit.controller;
 import cn.hutool.core.io.FileUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.yy.springbootinit.bizmq.BIProducer;
 import com.yy.springbootinit.common.BaseResponse;
 import com.yy.springbootinit.common.DeleteRequest;
 import com.yy.springbootinit.common.ErrorCode;
@@ -110,6 +109,13 @@ public class ChartController {
     public BaseResponse<BIResponse> genChartByAI(@RequestPart("file") MultipartFile multipartFile,
                                                  GenChartByAIRequest genChartByAIRequest, HttpServletRequest request) {
 
+        // 用户登录
+        User loginUser = userService.getLoginUser(request);
+        ThrowUtils.throwIf(loginUser == null, ErrorCode.NOT_LOGIN_ERROR, "未登录");
+        // 校验用户积分是否足够
+        boolean hasScore = userService.userHasScore(loginUser);
+        ThrowUtils.throwIf(!hasScore, ErrorCode.PARAMS_ERROR, "用户积分不足");
+
         ThrowUtils.throwIf(multipartFile == null, ErrorCode.PARAMS_ERROR, "文件为空");
         ThrowUtils.throwIf(genChartByAIRequest == null, ErrorCode.PARAMS_ERROR, "分析诉求为空");
         ThrowUtils.throwIf(userService.getLoginUser(request) == null, ErrorCode.NOT_LOGIN_ERROR);
@@ -130,6 +136,14 @@ public class ChartController {
     @PostMapping("/gen/async")
     public BaseResponse<BIResponse> genChartByAIAsync(@RequestPart("file") MultipartFile multipartFile,
                                              GenChartByAIRequest genChartByAIRequest, HttpServletRequest request) {
+        // 用户登录
+        User loginUser = userService.getLoginUser(request);
+        ThrowUtils.throwIf(loginUser == null, ErrorCode.NOT_LOGIN_ERROR, "未登录");
+        // 校验用户积分是否足够
+        boolean hasScore = userService.userHasScore(loginUser);
+        ThrowUtils.throwIf(!hasScore, ErrorCode.PARAMS_ERROR, "用户积分不足");
+
+
         ThrowUtils.throwIf(multipartFile == null, ErrorCode.PARAMS_ERROR, "文件为空");
         ThrowUtils.throwIf(genChartByAIRequest == null, ErrorCode.PARAMS_ERROR, "分析诉求为空");
         ThrowUtils.throwIf(userService.getLoginUser(request) == null, ErrorCode.NOT_LOGIN_ERROR);
@@ -148,17 +162,25 @@ public class ChartController {
      * @param request
      * @return
      */
-    @PostMapping("/gen/async/mq")
-    public BaseResponse<BIResponse> genChartByAIAsyncMQ(@RequestPart("file") MultipartFile multipartFile,
-                                                      GenChartByAIRequest genChartByAIRequest, HttpServletRequest request) {
-        ThrowUtils.throwIf(multipartFile == null, ErrorCode.PARAMS_ERROR, "文件为空");
-        ThrowUtils.throwIf(genChartByAIRequest == null, ErrorCode.PARAMS_ERROR, "分析诉求为空");
-        ThrowUtils.throwIf(userService.getLoginUser(request) == null, ErrorCode.NOT_LOGIN_ERROR);
-
-        BIResponse biResponse = chartService.genChartByAIAsyncMQ(multipartFile, genChartByAIRequest, request);
-
-        return ResultUtils.success(biResponse);
-    }
+//    @PostMapping("/gen/async/mq")
+//    public BaseResponse<BIResponse> genChartByAIAsyncMQ(@RequestPart("file") MultipartFile multipartFile,
+//                                                      GenChartByAIRequest genChartByAIRequest, HttpServletRequest request) {
+//        // 用户登录
+//        User loginUser = userService.getLoginUser(request);
+//        ThrowUtils.throwIf(loginUser == null, ErrorCode.NOT_LOGIN_ERROR, "未登录");
+//        // 校验用户积分是否足够
+//        boolean hasScore = userService.userHasScore(loginUser);
+//        ThrowUtils.throwIf(!hasScore, ErrorCode.PARAMS_ERROR, "用户积分不足");
+//
+//
+//        ThrowUtils.throwIf(multipartFile == null, ErrorCode.PARAMS_ERROR, "文件为空");
+//        ThrowUtils.throwIf(genChartByAIRequest == null, ErrorCode.PARAMS_ERROR, "分析诉求为空");
+//        ThrowUtils.throwIf(userService.getLoginUser(request) == null, ErrorCode.NOT_LOGIN_ERROR);
+//
+//        BIResponse biResponse = chartService.genChartByAIAsyncMQ(multipartFile, genChartByAIRequest, request);
+//
+//        return ResultUtils.success(biResponse);
+//    }
 
 
     /**
@@ -168,7 +190,6 @@ public class ChartController {
      * @return
      */
     @PostMapping("/update")
-//    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> updateChart(@RequestBody ChartUpdateRequest chartUpdateRequest) {
         if (chartUpdateRequest == null || chartUpdateRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
@@ -269,6 +290,12 @@ public class ChartController {
      */
     @PostMapping("/regenChart")
     public BaseResponse<BIResponse> RegenChartByAI(long id, HttpServletRequest request) {
+        // 用户登录
+        User loginUser = userService.getLoginUser(request);
+        ThrowUtils.throwIf(loginUser == null, ErrorCode.NOT_LOGIN_ERROR, "未登录");
+        // 校验用户积分是否足够
+        boolean hasScore = userService.userHasScore(loginUser);
+        ThrowUtils.throwIf(!hasScore, ErrorCode.PARAMS_ERROR, "用户积分不足");
 
         ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR, "id输入错误");
         ThrowUtils.throwIf(userService.getLoginUser(request) == null, ErrorCode.NOT_LOGIN_ERROR);

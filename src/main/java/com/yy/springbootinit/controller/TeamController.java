@@ -18,6 +18,8 @@ import com.yy.springbootinit.model.dto.team.TeamAddRequest;
 import com.yy.springbootinit.model.dto.team.TeamQueryRequest;
 import com.yy.springbootinit.model.entity.Chart;
 import com.yy.springbootinit.model.entity.Team;
+import com.yy.springbootinit.model.entity.TeamUser;
+import com.yy.springbootinit.model.entity.User;
 import com.yy.springbootinit.model.vo.BIResponse;
 import com.yy.springbootinit.model.vo.TeamVO;
 import com.yy.springbootinit.service.ChartService;
@@ -33,6 +35,7 @@ import java.util.List;
 
 @RequestMapping("/team")
 @RestController
+@CrossOrigin
 public class TeamController {
 
     @Resource
@@ -95,6 +98,17 @@ public class TeamController {
         return ResultUtils.success(teamVOS);
     }
 
+    @PostMapping("/page/my/TeamUser")
+    public BaseResponse<List<User>> pageMyTeamUser(@RequestBody TeamUser teamUser, HttpServletRequest request){
+        ThrowUtils.throwIf(teamUser == null, ErrorCode.PARAMS_ERROR);
+
+        List<User> teamUserPage = teamService.pageMyTeamUser(teamUser, request);
+
+        ThrowUtils.throwIf(teamUserPage == null, ErrorCode.PARAMS_ERROR,"队伍为空");
+
+        return ResultUtils.success(teamUserPage);
+    }
+
     @PostMapping("/chart/page")
     public BaseResponse<Page<Chart>> listTeamChartByPage(@RequestBody ChartQueryRequest chartQueryRequest) {
         Long teamId = chartQueryRequest.getTeamId();
@@ -110,7 +124,7 @@ public class TeamController {
         return ResultUtils.success(teamService.listAllMyJoinedTeam(request));
     }
 
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+
     @PostMapping("/page")
     public BaseResponse<Page<Team>> pageTeam(@RequestBody TeamQueryRequest teamQueryRequest) {
         if (teamQueryRequest == null) {
@@ -130,11 +144,20 @@ public class TeamController {
     }
 
     @PostMapping("/delete")
-    public BaseResponse<Boolean> deleteTeam(@RequestBody DeleteRequest deleteRequest) {
+    public BaseResponse<Boolean> deleteTeam(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
         if (deleteRequest == null || deleteRequest.getId() == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-        boolean b = teamService.deleteTeam(deleteRequest);
+        boolean b = teamService.deleteTeam(deleteRequest,request);
+        return ResultUtils.success(b);
+    }
+
+    @PostMapping("/deleteUser")
+    public BaseResponse<Boolean> deleteTeamUser(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
+        if (deleteRequest == null || deleteRequest.getId() == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        boolean b = teamService.deleteTeamUser(deleteRequest,request);
         return ResultUtils.success(b);
     }
 
@@ -157,7 +180,13 @@ public class TeamController {
     @PostMapping("/chart/regen")
     public BaseResponse<BIResponse> regenChart(@RequestBody ChartRegenRequest chartRegenRequest,
                                                HttpServletRequest request) {
-        ThrowUtils.throwIf(userService.getLoginUser(request) == null, ErrorCode.NOT_LOGIN_ERROR, "未登录");
+        // 用户登录
+        User loginUser = userService.getLoginUser(request);
+        ThrowUtils.throwIf(loginUser == null, ErrorCode.NOT_LOGIN_ERROR, "未登录");
+        // 校验用户积分是否足够
+        boolean hasScore = userService.userHasScore(loginUser);
+        ThrowUtils.throwIf(!hasScore, ErrorCode.PARAMS_ERROR, "用户积分不足");
+
         ThrowUtils.throwIf(chartRegenRequest == null, ErrorCode.PARAMS_ERROR);
 
         BIResponse biResponse = chartService.regenChartByAsyncMqFromTeam(chartRegenRequest, request);

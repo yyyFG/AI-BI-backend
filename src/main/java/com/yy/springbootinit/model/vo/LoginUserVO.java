@@ -32,6 +32,17 @@ public class LoginUserVO implements Serializable {
     private String userProfile;
 
     /**
+     * 用户积分
+     */
+    private Integer score;
+
+
+    /**
+     * 是否签到
+     */
+    private boolean isSignIn;
+
+    /**
      * 用户角色：user/admin/ban
      */
     private String userRole;
@@ -45,6 +56,11 @@ public class LoginUserVO implements Serializable {
      * 更新时间
      */
     private Date updateTime;
+
+
+    public void setIsSignIn(boolean isSignIn) {
+        this.isSignIn = isSignIn;
+    }
 
     private static final long serialVersionUID = 1L;
 }

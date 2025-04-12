@@ -1,9 +1,11 @@
 package com.yy.springbootinit.service.impl;
 
 import static com.yy.springbootinit.constant.UserConstant.USER_LOGIN_STATE;
+import static com.yy.springbootinit.constant.UserConstant.USER_SIGN_IN;
 
 import cn.hutool.core.collection.CollUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.yy.springbootinit.common.ErrorCode;
 import com.yy.springbootinit.constant.CommonConstant;
@@ -18,15 +20,22 @@ import com.yy.springbootinit.model.vo.LoginUserVO;
 import com.yy.springbootinit.model.vo.UserVO;
 import com.yy.springbootinit.service.UserService;
 import com.yy.springbootinit.utils.SqlUtils;
+
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
+import com.yy.springbootinit.constant.RedisConstant;
 
 /**
  * 用户服务实现
@@ -35,6 +44,9 @@ import org.springframework.util.DigestUtils;
 @Service
 @Slf4j
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
+
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
 
     /**
      * 盐值，混淆密码
@@ -105,6 +117,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
         // 3. 记录用户的登录态
         request.getSession().setAttribute(USER_LOGIN_STATE, user);
+//        System.out.println(user.getScore());
+
         return this.getLoginUserVO(user);
     }
 
@@ -125,6 +139,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 从数据库查询（追求性能的话可以注释，直接走缓存）
         long userId = currentUser.getId();
         currentUser = this.getById(userId);
+//        System.out.println(currentUser.getScore());
         if (currentUser == null) {
             throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR);
         }
@@ -191,6 +206,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
         LoginUserVO loginUserVO = new LoginUserVO();
         BeanUtils.copyProperties(user, loginUserVO);
+        String isSignIn = stringRedisTemplate.opsForValue().get(RedisConstant.USER_SIGN_IN_REDIS_ID + user.getId());
+        loginUserVO.setIsSignIn(StringUtils.isNotEmpty(isSignIn) && isSignIn.equals(USER_SIGN_IN));
         return loginUserVO;
     }
 
@@ -253,12 +270,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         Long userId = user.getId();
         User loginUser = getLoginUser(request);
         User oldUser = this.getById(userId);
-        if (UserConstant.ADMIN_ROLE.equals(user.getUserRole())) {
-            throw new BusinessException(ErrorCode.OPERATION_ERROR, "管理员用户不可修改");
-        }
-        if (!this.isAdmin(request) && !loginUser.getId().equals(userId)) {
-            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权限修改");
-        }
         if (!oldUser.getUserAccount().equals(user.getUserAccount())) {
             String userAccount = user.getUserAccount();
             if (this.count(new QueryWrapper<User>().eq("userAccount", userAccount)) > 0) {
@@ -289,5 +300,69 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         user.setUserPassword(userPassword);
         boolean b = this.save(user);
         return b;
+    }
+
+
+    @Override
+    public boolean userHasScore(User user) {
+        if (user == null || user.getScore() == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR);
+        }
+        Integer score = user.getScore();
+        // 积分为空或者小于5，代表用户无积分，返回false
+        return score != null && score >= 5;
+    }
+
+    @Override
+    public void deleteUserScore(Long userId) {
+        UpdateWrapper<User> userUpdateWrapper = new UpdateWrapper<>();
+        userUpdateWrapper.eq("id", userId);
+        userUpdateWrapper.setSql("score = score - 5");
+        boolean updateScoreResult = this.update(userUpdateWrapper);
+        if (!updateScoreResult) {
+            log.error("用户: {} 积分扣除失败", userId);
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR);
+        }
+        log.info("用户: {} 积分扣除成功", userId);
+    }
+
+
+    /**
+     * 签到领积分
+     * @param request
+     * @return
+     */
+    @Override
+    public synchronized boolean signIn(HttpServletRequest request) {
+        User loginUser = this.getLoginUser(request);
+        if (loginUser == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR);
+        }
+        Long userId = loginUser.getId();
+        // 先判断是否已签到过
+        String isSignIn = stringRedisTemplate.opsForValue().get(RedisConstant.USER_SIGN_IN_REDIS_ID + userId);
+        if (!StringUtils.isEmpty(isSignIn) && isSignIn.equals(USER_SIGN_IN)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "您今天已签到，请明天再来");
+        }
+        // 计算当前时间至次日零点的秒数
+        LocalDateTime currentDatetime = LocalDateTime.now();
+
+        LocalDateTime nextDayMidnight = currentDatetime.plusDays(1).withHour(0).
+                withMinute(0).withSecond(0).withNano(0);
+        Duration duration = Duration.between(currentDatetime, nextDayMidnight);
+        long seconds = Math.abs(duration.getSeconds());
+        // 将签到信息存入 Redis
+        try {
+            stringRedisTemplate.opsForValue().set(RedisConstant.USER_SIGN_IN_REDIS_ID + userId,
+                    USER_SIGN_IN, seconds, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            log.info("用户 {} 签到失败", userId, e);
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "签到失败");
+        }
+        UpdateWrapper<User> userUpdateWrapper = new UpdateWrapper<>();
+        userUpdateWrapper.eq("id", userId);
+        userUpdateWrapper.setSql("score = score + 20");
+        boolean update = this.update(userUpdateWrapper);
+        return update;
     }
 }

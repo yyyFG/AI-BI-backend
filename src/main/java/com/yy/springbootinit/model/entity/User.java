@@ -44,6 +44,12 @@ public class User implements Serializable {
      */
     private String userProfile;
 
+
+    /**
+     * 用户积分
+     */
+    private Integer score;
+
     /**
      * 用户角色：user/admin
      */

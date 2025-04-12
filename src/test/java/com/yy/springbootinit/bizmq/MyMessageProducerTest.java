@@ -8,11 +8,11 @@ import javax.annotation.Resource;
 @SpringBootTest
 class MyMessageProducerTest {
 
-    @Resource
-    private MyMessageProducer myMessageProducer;
-
-    @Test
-    void sendMessage() {
-        myMessageProducer.sendMessage("code_exchange", "my_routingKey", "你好呀");
-    }
+//    @Resource
+//    private MyMessageProducer myMessageProducer;
+//
+//    @Test
+//    void sendMessage() {
+//        myMessageProducer.sendMessage("code_exchange", "my_routingKey", "你好呀");
+//    }
 }

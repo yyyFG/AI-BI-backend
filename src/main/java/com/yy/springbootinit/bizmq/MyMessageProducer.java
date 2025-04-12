@@ -9,12 +9,12 @@ import javax.annotation.Resource;
 @Component
 public class MyMessageProducer {
 
-
-    @Resource
-    private RabbitTemplate rabbitTemplate;
-
-
-    public void sendMessage(String exchange, String routingKey, String message){
-        rabbitTemplate.convertAndSend(exchange, routingKey, message);
-    }
+//
+//    @Resource
+//    private RabbitTemplate rabbitTemplate;
+//
+//
+//    public void sendMessage(String exchange, String routingKey, String message){
+//        rabbitTemplate.convertAndSend(exchange, routingKey, message);
+//    }
 }

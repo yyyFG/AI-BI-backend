@@ -72,8 +72,8 @@ public interface ChartService extends IService<Chart> {
      * @param request
      * @return
      */
-    BIResponse genChartByAIAsyncMQ(MultipartFile multipartFile,
-                                                 GenChartByAIRequest genChartByAIRequest, HttpServletRequest request);
+//    BIResponse genChartByAIAsyncMQ(MultipartFile multipartFile,
+//                                                 GenChartByAIRequest genChartByAIRequest, HttpServletRequest request);
 
 
     /**

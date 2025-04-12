@@ -119,4 +119,26 @@ public interface UserService extends IService<User> {
 
     boolean addUser(User user);
 
+
+    /**
+     * 积分查询
+     * @param user
+     * @return
+     */
+    boolean userHasScore(User user);
+
+    /**
+     * 扣除积分
+     * @param userId
+     */
+    void deleteUserScore(Long userId);
+
+
+    /**
+     * 签到
+     * @param request
+     * @return
+     */
+    boolean signIn(HttpServletRequest request);
+
 }

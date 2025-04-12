@@ -10,25 +10,25 @@ import com.rabbitmq.client.ConnectionFactory;
  */
 public class MqlnitMain {
 
-    public static void main(String[] args) {
-        // 创建连接
-        ConnectionFactory factory = new ConnectionFactory();
-        factory.setHost("localhost");
-        try {
-            Connection connection = factory.newConnection();
-            Channel channel = connection.createChannel();
-            String EXCHANGE_NAME = "code_exchange";
-            // 声明交换机
-            channel.exchangeDeclare(EXCHANGE_NAME, "direct");
-
-            // 创建队列，随机分配一个队列名称
-            String queueName = "code_queue";
-            channel.queueDeclare(queueName, true, false, false, null);
-            channel.queueBind(queueName, EXCHANGE_NAME, "my_routingKey");
-
-        } catch (Exception e){
-
-        }
-
-    }
+//    public static void main(String[] args) {
+//        // 创建连接
+//        ConnectionFactory factory = new ConnectionFactory();
+//        factory.setHost("localhost");
+//        try {
+//            Connection connection = factory.newConnection();
+//            Channel channel = connection.createChannel();
+//            String EXCHANGE_NAME = "code_exchange";
+//            // 声明交换机
+//            channel.exchangeDeclare(EXCHANGE_NAME, "direct");
+//
+//            // 创建队列，随机分配一个队列名称
+//            String queueName = "code_queue";
+//            channel.queueDeclare(queueName, true, false, false, null);
+//            channel.queueBind(queueName, EXCHANGE_NAME, "my_routingKey");
+//
+//        } catch (Exception e){
+//
+//        }
+//
+//    }
 }

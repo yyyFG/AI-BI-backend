@@ -66,51 +66,6 @@ public class TeamChartServiceImpl extends ServiceImpl<TeamChartMapper, TeamChart
         return count > 0;
     }
 
-//    @Override
-//    @Transactional(rollbackFor = Exception.class)
-//    public boolean addTeamChart(ChartQueryRequest chartQueryRequest, HttpServletRequest request) {
-//        User loginUser = userService.getLoginUser(request);
-//        Long userId = loginUser.getId();
-//        QueryWrapper<TeamUser> queryWrapper = new QueryWrapper<>();
-//        queryWrapper.eq("userId", userId);
-//        List<TeamUser> teamUsers = teamUserService.list(queryWrapper);
-//
-//
-//        String name = teamAddRequest.getName();
-//        String imgUrl = teamAddRequest.getImgUrl();
-//        String description = teamAddRequest.getDescription();
-//        Integer maxNum = teamAddRequest.getMaxNum();
-//        if (StringUtils.isEmpty(name)) {
-//            throw new BusinessException(ErrorCode.PARAMS_ERROR, "队伍名称不能为空");
-//        }
-//
-//        if (StringUtils.isEmpty(imgUrl)) {
-//            throw new BusinessException(ErrorCode.PARAMS_ERROR, "图片不能为空");
-//        }
-//
-//        // 增加图片校验
-//
-//
-//
-//        if (StringUtils.isEmpty(description) || description.length() > 100) {
-//            throw new BusinessException(ErrorCode.PARAMS_ERROR, "队伍描述不能为空或长度大于100");
-//        }
-//        if (maxNum == null || maxNum < 1) {
-//            throw new BusinessException(ErrorCode.PARAMS_ERROR, "最大人数不得为空或者小于1");
-//        }
-//        Team team = new Team();
-//        BeanUtils.copyProperties(teamAddRequest, team);
-//        User loginUser = userService.getLoginUser(request);
-//        Long userId = loginUser.getId();
-//        team.setUserId(userId);
-//        boolean b1 = this.save(team);
-//        TeamUser teamUser = new TeamUser();
-//        teamUser.setTeamId(team.getId());
-//        teamUser.setUserId(userId);
-//        boolean b2 = teamUserService.save(teamUser);
-//        return b1 && b2;
-//    }
-
 
     @Override
     @Transactional(rollbackFor = Exception.class)
