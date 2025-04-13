@@ -15,9 +15,11 @@ import com.yy.springbootinit.manager.TestDeepSeekAiManager;
 import com.yy.springbootinit.model.dto.chart.*;
 import com.yy.springbootinit.model.dto.team_chart.ChartAddToTeamRequest;
 import com.yy.springbootinit.model.entity.Chart;
+import com.yy.springbootinit.model.entity.TeamChart;
 import com.yy.springbootinit.model.entity.User;
 import com.yy.springbootinit.model.vo.BIResponse;
 import com.yy.springbootinit.service.ChartService;
+import com.yy.springbootinit.service.TeamChartService;
 import com.yy.springbootinit.service.UserService;
 import com.yy.springbootinit.utils.ExcelUtils;
 import com.yy.springbootinit.utils.SqlUtils;
@@ -51,6 +53,9 @@ public class ChartController {
     @Resource
     private UserService userService;
 
+
+    @Resource
+    private TeamChartService teamChartService;
 
     /**
      * 创建
@@ -93,6 +98,31 @@ public class ChartController {
         ThrowUtils.throwIf(oldChart == null, ErrorCode.NOT_FOUND_ERROR);
 
         boolean b = chartService.removeById(id);
+        return ResultUtils.success(b);
+    }
+
+    /**
+     * 删除队伍图表
+     *
+     * @param deleteRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/deleteChartTeam")
+    public BaseResponse<Boolean> deleteChartTeam(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
+        if (deleteRequest == null || deleteRequest.getId() <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User user = userService.getLoginUser(request);
+        long id = deleteRequest.getId();
+        // 判断是否存在
+        QueryWrapper<TeamChart>  queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("chartId", id);
+        TeamChart oldChart = teamChartService.getOne(queryWrapper);
+//        TeamChart oldChart = teamChartService.getById(id);
+        ThrowUtils.throwIf(oldChart == null, ErrorCode.NOT_FOUND_ERROR);
+
+        boolean b = teamChartService.remove(queryWrapper);
         return ResultUtils.success(b);
     }
 

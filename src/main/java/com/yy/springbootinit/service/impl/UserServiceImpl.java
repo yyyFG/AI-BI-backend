@@ -270,6 +270,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         Long userId = user.getId();
         User loginUser = getLoginUser(request);
         User oldUser = this.getById(userId);
+
+        if(user.getUserAccount() == null) user.setUserAccount(oldUser.getUserAccount());
+        if(user.getUserPassword() == null) user.setUserPassword(oldUser.getUserPassword());
+        if(user.getUserName() == null) user.setUserName(oldUser.getUserName());
+        if(user.getUserAvatar() == null) user.setUserAvatar(oldUser.getUserAvatar());
+        if(user.getUserProfile() == null) user.setUserProfile(oldUser.getUserProfile());
+
+
         if (!oldUser.getUserAccount().equals(user.getUserAccount())) {
             String userAccount = user.getUserAccount();
             if (this.count(new QueryWrapper<User>().eq("userAccount", userAccount)) > 0) {
@@ -289,7 +297,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         String userName = user.getUserName();
         String userAvatar = user.getUserAvatar();
         String userRole = user.getUserRole();
-        if (StringUtils.isAnyBlank(userAccount, userPassword, userName, userAvatar, userRole)) {
+        String userProfile = user.getUserProfile();
+        if (StringUtils.isAnyBlank(userAccount, userPassword, userName, userAvatar, userRole, userProfile)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数为空");
         }
         if (this.count(new QueryWrapper<User>().eq("userAccount", userAccount)) > 0) {

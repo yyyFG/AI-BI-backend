@@ -25,6 +25,7 @@ import com.yy.springbootinit.model.vo.TeamVO;
 import com.yy.springbootinit.service.ChartService;
 import com.yy.springbootinit.service.TeamService;
 import com.yy.springbootinit.service.UserService;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -32,6 +33,8 @@ import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.Arrays;
 import java.util.List;
+
+import static com.yy.springbootinit.constant.CommonConstant.BASE_URL;
 
 @RequestMapping("/team")
 @RestController
@@ -137,10 +140,18 @@ public class TeamController {
     @PostMapping("/update")
     public BaseResponse<Boolean> updateTeam(@RequestBody Team team, HttpServletRequest request) {
         if (team == null) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "不能为空");
         }
-        boolean b = teamService.updateTeam(team, request);
-        return ResultUtils.success(b);
+
+        Long teamId = team.getId();
+        Team oldTeam = teamService.getById(teamId);
+        String teamAvatar = team.getImgUrl();
+        if(StringUtils.isEmpty(teamAvatar)) team.setImgUrl(oldTeam.getImgUrl());
+        else {
+            String imgUrl = BASE_URL + team.getImgUrl();
+            team.setImgUrl(imgUrl);
+        }
+        return ResultUtils.success(teamService.updateTeam(team,request));
     }
 
     @PostMapping("/delete")

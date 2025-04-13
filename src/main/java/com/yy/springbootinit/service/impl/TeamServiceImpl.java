@@ -28,6 +28,7 @@ import com.yy.springbootinit.utils.DateUtil;
 import com.yy.springbootinit.utils.SqlUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.poi.ss.formula.functions.T;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -306,9 +307,19 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
 
     @Override
     public Boolean updateTeam(Team team, HttpServletRequest request) {
-        User loginUser = userService.getLoginUser(request);
-        Long userId = loginUser.getId();
-        if(this.getById(team) == null) return this.save(team);
+        Long teamId = team.getId();
+        Team oldTeam = this.getById(teamId);
+
+        if(team.getName() == null) team.setName(oldTeam.getName());
+        if(team.getDescription() == null) team.setDescription(oldTeam.getDescription());
+        if(team.getMaxNum() == null) team.setMaxNum(oldTeam.getMaxNum());
+
+        if(!oldTeam.getName().equals(team.getName())){
+            String teamName = team.getName();
+            if(this.count(new QueryWrapper<Team>().eq("name", teamName)) > 0){
+                throw new BusinessException(ErrorCode.PARAMS_ERROR, "队伍名已存在");
+            }
+        }
         return this.updateById(team);
     }
 

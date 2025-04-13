@@ -20,6 +20,7 @@ import com.yy.springbootinit.model.vo.LoginUserVO;
 import com.yy.springbootinit.model.vo.UserVO;
 import com.yy.springbootinit.service.UserService;
 import java.util.List;
+import java.util.Objects;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -159,8 +160,17 @@ public class UserController {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
 
-        String imgUrl = BASE_URL + user.getUserAvatar();
-        user.setUserAvatar(imgUrl);
+        Long userId = user.getId();
+        User oldUser = userService.getById(userId);
+        String userAvatar = user.getUserAvatar();
+        if(StringUtils.isEmpty(userAvatar)) user.setUserAvatar(oldUser.getUserAvatar());
+        else {
+            String imgUrl = BASE_URL + user.getUserAvatar();
+            user.setUserAvatar(imgUrl);
+        }
+
+        System.out.println(user.getUserAvatar());
+
         if (user.getId() == null) {
             return ResultUtils.success(userService.addUser(user));
         }
