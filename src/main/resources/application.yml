@@ -15,6 +15,12 @@ spring:
     store-type: redis
     # 30 天过期
     timeout: 2592000
+  ai:
+    openai:
+      base-url: https://api.deepseek.com/chat/completions
+      api-key: sk-062ad1633d0546b2bfa09c82a56de158
+      chat.options:
+        model: deepseek-chat
   # 数据库配置
   # todo 需替换配置
   datasource:
