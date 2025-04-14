@@ -310,9 +310,9 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
         Long teamId = team.getId();
         Team oldTeam = this.getById(teamId);
 
-        if(team.getName() == null) team.setName(oldTeam.getName());
-        if(team.getDescription() == null) team.setDescription(oldTeam.getDescription());
-        if(team.getMaxNum() == null) team.setMaxNum(oldTeam.getMaxNum());
+        if(StringUtils.isEmpty(team.getName())) team.setName(oldTeam.getName());
+        if(StringUtils.isEmpty(team.getDescription())) team.setDescription(oldTeam.getDescription());
+//        if(team.getMaxNum() <= 0) team.setMaxNum(oldTeam.getMaxNum());
 
         if(!oldTeam.getName().equals(team.getName())){
             String teamName = team.getName();
