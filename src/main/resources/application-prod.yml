@@ -6,17 +6,17 @@ spring:
   # todo 需替换配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://yyyai.xyz:3306/ybi
-    username: root_yu
-    password: fuckmysql
+    url: jdbc:mysql:
+    username: 
+    password: 
   # Redis 配置
   # todo 需替换配置
   redis:
     database: 1
-    host: yyyai.xyz
+    host: 
     port: 6379
     timeout: 5000
-    password: fuckredis
+    password: 
 mybatis-plus:
   configuration:
     # 生产环境关闭日志
@@ -25,5 +25,5 @@ mybatis-plus:
 knife4j:
   basic:
     enable: true
-    username: root_knife
-    password: plzknife_145
+    username: 
+    password: 
