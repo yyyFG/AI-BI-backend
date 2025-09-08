@@ -1,7 +1,7 @@
 # 公共配置文件
 spring:
   application:
-    name: springboot-init
+    name: AI-BI-backend
   # 默认 dev 环境
   profiles:
     active: dev
@@ -17,10 +17,10 @@ spring:
     timeout: 2592000
   ai:
     openai:
-      base-url: https://api.deepseek.com/chat/completions
-      api-key: sk-062ad1633d0546b2bfa09c82a56de158
+      base-url: 
+      api-key: 
       chat.options:
-        model: deepseek-chat
+        model: 
   # 数据库配置
   # todo 需替换配置
   datasource:
@@ -100,5 +100,5 @@ knife4j:
           - com.yy.springbootinit.controller
 # DeepSeek 服务
 deepseek:
-  apiKey: sk-062ad1633d0546b2bfa09c82a56de158
-  API_URL: https://api.deepseek.com/chat/completions
+  apiKey: 
+  API_URL: 
