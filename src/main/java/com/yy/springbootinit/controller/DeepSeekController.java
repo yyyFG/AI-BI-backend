@@ -24,8 +24,8 @@ import java.util.List;
 @RequestMapping("/ai")
 public class DeepSeekController {
 
-    private final String DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
-    private final String API_KEY = "sk-062ad1633d0546b2bfa09c82a56de158"; // 替换为你的实际API密钥
+    private final String DEEPSEEK_API_URL = "";
+    private final String API_KEY = ""; // 替换为你的实际API密钥
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
